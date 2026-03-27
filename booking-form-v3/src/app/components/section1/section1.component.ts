@@ -18,6 +18,19 @@ export class Section1Component implements OnInit, OnDestroy {
   showErrors:boolean = false;
   expandedApplicants:boolean[] = [];
   applicantAccessWarning = '';
+  touchedMobile = false;
+  touchedEmail = false;
+  touchedPan: Record<number, boolean> = {};
+  touchedFunding: Record<'bankName' | 'ownContrib' | 'homeLoan', boolean> = {
+    bankName: false,
+    ownContrib: false,
+    homeLoan: false
+  };
+  touchedNri: Record<'nriCountry' | 'localContactNo' | 'localContactPerson', boolean> = {
+    nriCountry: false,
+    localContactNo: false,
+    localContactPerson: false
+  };
 
   titles         = ['Mr.','Mrs.','Ms.','Dr.','Prof.'];
   configurations = ['1 BHK','2 BHK','3 BHK','4 BHK','5 BHK','Penthouse','Studio','Duplex'];
@@ -44,6 +57,9 @@ export class Section1Component implements OnInit, OnDestroy {
     this.svc.section1$.subscribe(s => {
       this.form = s;
       this.syncApplicantExpandedState();
+      if (!this.form.residentialStatus) {
+        this.patch('residentialStatus', 'Resident Indian');
+      }
     });
 
     this.setupMobileCheck();
@@ -86,19 +102,62 @@ export class Section1Component implements OnInit, OnDestroy {
     });
   }
 
-  /** Loose validation — 7-15 digits after stripping spaces/+/- */
+  /** Mobile is valid only when exactly 10 digits. */
   private looksLikeMobile(v: string): boolean {
-    const digits = (v || '').replace(/[\s\+\-\(\)]/g, '');
-    return digits.length >= 7 && digits.length <= 15 && /^\d+$/.test(digits);
+    const digits = (v || '').replace(/\D/g, '');
+    return /^\d{10}$/.test(digits);
   }
 
   // ── Called on every keystroke on the mobile field ──────────────────────
   onMobileInput(value: string): void {
-    this.patch('mobile', value);
+    this.touchedMobile = true;
+    const digits = (value || '').replace(/\D/g, '').slice(0, 10);
+    this.patch('mobile', digits);
     // Reset state immediately on new input so stale "ok"/"duplicate" clears
-    this.mobileCheckState       = value.length >= 7 ? 'checking' : 'idle';
+    this.mobileCheckState       = digits.length === 10 ? 'checking' : 'idle';
     this.mobileDuplicateMatches = [];
-    this.mobile$.next(value);
+    this.mobile$.next(digits);
+  }
+
+  onMobileBlur(): void {
+    this.touchedMobile = true;
+  }
+
+  onEmailInput(value: string): void {
+    this.touchedEmail = true;
+    this.patch('email', value);
+  }
+
+  onEmailBlur(): void {
+    this.touchedEmail = true;
+  }
+
+  onPanInput(i: number, value: string): void {
+    this.touchedPan[i] = true;
+    const pan = (value || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
+    this.patchApplicant(i, 'pan', pan);
+  }
+
+  onPanBlur(i: number): void {
+    this.touchedPan[i] = true;
+  }
+
+  onFundingInput(field: 'bankName' | 'ownContrib' | 'homeLoan', value: string): void {
+    this.touchedFunding[field] = true;
+    this.patchFunding(field, value);
+  }
+
+  onFundingBlur(field: 'bankName' | 'ownContrib' | 'homeLoan'): void {
+    this.touchedFunding[field] = true;
+  }
+
+  onNriInput(field: 'nriCountry' | 'localContactNo' | 'localContactPerson', value: string): void {
+    this.touchedNri[field] = true;
+    this.patch(field, value);
+  }
+
+  onNriBlur(field: 'nriCountry' | 'localContactNo' | 'localContactPerson'): void {
+    this.touchedNri[field] = true;
   }
 
   // ── Existing patch helpers ─────────────────────────────────────────────
@@ -195,8 +254,20 @@ export class Section1Component implements OnInit, OnDestroy {
     const missing: Array<{ id: string; label: string }> = [];
 
     if (!this.form.residenceAddress?.trim()) missing.push({ id: 'residential-address', label: 'Residence Address' });
-    if (!this.form.mobile?.trim()) missing.push({ id: 'residential-mobile', label: 'Mobile Number' });
-    if (!this.form.email?.trim()) missing.push({ id: 'residential-email', label: 'Email Address' });
+    if (!this.isMobileValid()) missing.push({ id: 'residential-mobile', label: 'Mobile Number (10 digits)' });
+    if (!this.isEmailValid()) missing.push({ id: 'residential-email', label: 'Email Address (valid format)' });
+
+    if (this.form.funding.loanOpted === 'Yes') {
+      if (!this.form.funding.bankName?.trim()) missing.push({ id: 'funding-bankName', label: 'Bank / FI Name' });
+      if (!this.form.funding.ownContrib?.trim()) missing.push({ id: 'funding-ownContrib', label: 'Own Contribution %' });
+      if (!this.form.funding.homeLoan?.trim()) missing.push({ id: 'funding-homeLoan', label: 'Home Loan %' });
+    }
+
+    if (this.isNriSelected()) {
+      if (!this.form.nriCountry?.trim()) missing.push({ id: 'nri-country', label: 'Country' });
+      if (!this.form.localContactNo?.trim()) missing.push({ id: 'nri-localContactNo', label: 'Local Contact Number' });
+      if (!this.form.localContactPerson?.trim()) missing.push({ id: 'nri-localContactPerson', label: 'Local Contact Person' });
+    }
 
     (this.form.applicants || []).forEach((_, idx) => {
       missing.push(...this.getApplicantMissingFields(idx));
@@ -210,6 +281,7 @@ export class Section1Component implements OnInit, OnDestroy {
       if (!cp.rera?.trim()) missing.push({ id: 'cp-rera', label: 'Channel Partner RERA' });
       if (!cp.gst?.trim()) missing.push({ id: 'cp-gst', label: 'Channel Partner GST' });
       if (!cp.brokerage?.trim()) missing.push({ id: 'cp-brokerage', label: 'Channel Partner Brokerage' });
+      if (!this.form.signatures?.['channelPartner']) missing.push({ id: 'cp-signature-section', label: 'Channel Partner Signature' });
     }
 
     return {
@@ -228,7 +300,7 @@ export class Section1Component implements OnInit, OnDestroy {
     if (!a.firstName?.trim()) missing.push({ id: `applicant-${index}-firstName`, label: `Applicant ${applicantNo} First Name` });
     if (!a.lastName?.trim()) missing.push({ id: `applicant-${index}-lastName`, label: `Applicant ${applicantNo} Last Name` });
     if (!a.dob?.trim()) missing.push({ id: `applicant-${index}-dob`, label: `Applicant ${applicantNo} Date of Birth` });
-    if (!a.pan?.trim()) missing.push({ id: `applicant-${index}-pan`, label: `Applicant ${applicantNo} PAN` });
+    if (!this.isPanValid(a.pan)) missing.push({ id: `applicant-${index}-pan`, label: `Applicant ${applicantNo} PAN (valid format)` });
 
     return missing;
   }
@@ -238,10 +310,55 @@ export class Section1Component implements OnInit, OnDestroy {
   }
 
   isApplicantFieldInvalid(index: number, field: 'title' | 'firstName' | 'lastName' | 'dob' | 'pan'): boolean {
+    if (field === 'pan') {
+      if (!this.showErrors && !this.touchedPan[index]) return false;
+      const a = this.form?.applicants?.[index];
+      if (!a) return false;
+      return !this.isPanValid(a.pan);
+    }
+
     if (!this.showErrors) return false;
     const a = this.form?.applicants?.[index];
     if (!a) return false;
     return !(a[field] || '').trim();
+  }
+
+  isMobileValid(): boolean {
+    return /^\d{10}$/.test((this.form?.mobile || '').trim());
+  }
+
+  isEmailValid(): boolean {
+    const email = (this.form?.email || '').trim();
+    if (!email) return false;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  isPanValid(pan?: string): boolean {
+    return /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test((pan || '').trim());
+  }
+
+  showMobileValidationError(): boolean {
+    return (this.showErrors || this.touchedMobile) && !this.isMobileValid();
+  }
+
+  showEmailValidationError(): boolean {
+    return (this.showErrors || this.touchedEmail) && !this.isEmailValid();
+  }
+
+  isNriSelected(): boolean {
+    return ['NRI', 'PIO', 'OCI'].includes(this.form?.residentialStatus || '');
+  }
+
+  isFundingFieldInvalid(field: 'bankName' | 'ownContrib' | 'homeLoan'): boolean {
+    if (this.form?.funding?.loanOpted !== 'Yes') return false;
+    if (!this.showErrors && !this.touchedFunding[field]) return false;
+    return !(this.form?.funding?.[field] || '').trim();
+  }
+
+  isNriFieldInvalid(field: 'nriCountry' | 'localContactNo' | 'localContactPerson'): boolean {
+    if (!this.isNriSelected()) return false;
+    if (!this.showErrors && !this.touchedNri[field]) return false;
+    return !(this.form?.[field] || '').trim();
   }
 
   revealField(fieldId: string): void {

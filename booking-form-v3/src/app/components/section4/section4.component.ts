@@ -76,18 +76,20 @@ ngOnChanges(changes: SimpleChanges) {
   // Rebuild uploadedFiles display from the s4 model (e.g. draft restore)
   private syncUploadedFilesFromForm(): void {
     if (!this.form) return;
+    const rebuilt: Record<string, { label: string; name: string; type: string }> = {};
     this.form.applicants.forEach((app: any, appIdx: number) => {
       Object.entries(app || {}).forEach(([field, doc]: [string, any]) => {
-        if (doc?.fileData && !this.uploadedFiles[`${appIdx}-${field}`]) {
+        if (doc?.fileData) {
           const allFields = [...this.idFields, ...this.addrFields, ...this.nriFields, ...this.coFields];
           const fieldDef  = allFields.find(f => f.key === field);
-          this.uploadedFiles[`${appIdx}-${field}`] = {
+          rebuilt[`${appIdx}-${field}`] = {
             label: `App ${appIdx + 1} — ${fieldDef?.label || field}`,
             name:  doc.fileName || field, type: doc.fileType || 'application/pdf'
           };
         }
       });
     });
+    this.uploadedFiles = rebuilt;
   }
 
   // True if a NEW file was uploaded in this session

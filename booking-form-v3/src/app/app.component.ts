@@ -3,6 +3,7 @@ import { BookingFormService } from './services/booking-form.service';
 import { NetsuiteService } from './services/netsuite.service';
 import { BookingRecord } from './models/booking-form.model';
 import { Section1Component } from './components/section1/section1.component';
+import { Section3Component } from './components/section3/section3.component';
 
 @Component({
   selector: 'app-root',
@@ -24,6 +25,7 @@ export class AppComponent implements OnInit {
   // @Input() applicantSelectedType = new EventEmitter();
   @Input() applicantType: any;
   @ViewChild(Section1Component) section1!: Section1Component;
+  @ViewChild(Section3Component) section3!: Section3Component;
 
   steps = [
     { num: 1, label: 'Booking Form',    sub: 'Applicant & Flat Details' },
@@ -53,17 +55,16 @@ goTo(step: number): void {
  if (step > this.currentStep && this.currentStep === 1 && this.section1) {
     if (!this.validateSection1BeforeProceeding()) return;
  }
+ if (step > this.currentStep && this.currentStep === 2 && this.section3) {
+    if (!this.validateSection3BeforeProceeding()) return;
+ }
 
     this.formService.goToStep(step);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
 next(): void {
-   if (this.currentStep === 1 && this.section1) {
-    if (!this.validateSection1BeforeProceeding()) return;
-   }
-      this.goTo(this.currentStep + 1);
-
+  this.goTo(this.currentStep + 1);
 }
 
 scrollToField(fieldId: string) {
@@ -161,6 +162,18 @@ scrollToField(fieldId: string) {
     this.validationMissingFields = validation.missingFieldNames;
     this.showValidationModal = true;
     this.scrollToField(validation.firstInvalidFieldId);
+    return false;
+  }
+
+  private validateSection3BeforeProceeding(): boolean {
+    const validation = this.section3.getValidationState();
+    if (validation.valid) {
+      this.validationMissingFields = [];
+      this.showValidationModal = false;
+      return true;
+    }
+    this.validationMissingFields = this.section3.getMissingSelfFields();
+    this.showValidationModal = true;
     return false;
   }
 }

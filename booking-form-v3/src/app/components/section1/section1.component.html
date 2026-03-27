@@ -80,7 +80,7 @@
           </div>
         </div>
         <button
-          *ngIf="i>0 && i===form.applicants.length-1"
+          *ngIf="i>0"
           class="expand-btn"
           type="button"
           style="margin-left:8px"
@@ -110,10 +110,11 @@
               [id]="'applicant-'+i+'-pan'"
               [value]="app.pan"
               [class.error]="isApplicantFieldInvalid(i,'pan')"
-              (input)="patchApplicant(i,'pan',$any($event.target).value)"
+              (input)="onPanInput(i,$any($event.target).value)"
+              (blur)="onPanBlur(i)"
               style="text-transform:uppercase"
               maxlength="10"/>
-            <div class="field-error" *ngIf="isApplicantFieldInvalid(i,'pan')">PAN is required.</div>
+            <div class="field-error" *ngIf="isApplicantFieldInvalid(i,'pan')">Please enter a valid PAN number.</div>
           </div>
           <div class="f"><label>Occupation</label><input type="text" [value]="app.occupation" (input)="patchApplicant(i,'occupation',$any($event.target).value)"/></div>
         </div>
@@ -179,12 +180,13 @@
         <label>Mobile <span class="req">*</span></label>
         <div class="mobile-input-row">
           <input
-            type="number"
-          
+            type="text"
+            inputmode="numeric"
             [value]="form.mobile"
             id="residential-mobile"
             (input)="onMobileInput($any($event.target).value)"
-             [class.error]="showErrors && (!form.mobile || !form.mobile.trim())"
+            (blur)="onMobileBlur()"
+            [class.error]="showMobileValidationError()"
             [class.input-checking]="mobileCheckState === 'checking'"
             [class.input-ok]="mobileCheckState === 'ok'"
             [class.input-error]="mobileCheckState === 'duplicate'"
@@ -198,7 +200,7 @@
             <span *ngIf="mobileCheckState === 'duplicate'" class="err-icon"  title="Duplicate">✕</span>
           </span>
         </div>
-        <div class="field-error" *ngIf="showErrors && (!form.mobile || !form.mobile.trim())">Mobile number is required.</div>
+        <div class="field-error" *ngIf="showMobileValidationError()">Please enter a valid 10-digit mobile number.</div>
 
         <!-- Checking hint -->
         <div class="mobile-hint checking" *ngIf="mobileCheckState === 'checking'">
@@ -228,8 +230,14 @@
       <div class="f"><label>Residence Phone</label><input type="tel" [value]="form.residencePhone"  (input)="patch('residencePhone',$any($event.target).value)"/></div>
       <div class="f">
         <label>Email <span class="req">*</span></label>
-        <input id="residential-email" [class.error]="showErrors && (!form.email || !form.email.trim())" type="email" [value]="form.email" (input)="patch('email',$any($event.target).value)"/>
-        <div class="field-error" *ngIf="showErrors && (!form.email || !form.email.trim())">Email is required.</div>
+        <input
+          id="residential-email"
+          type="email"
+          [value]="form.email"
+          [class.error]="showEmailValidationError()"
+          (input)="onEmailInput($any($event.target).value)"
+          (blur)="onEmailBlur()"/>
+        <div class="field-error" *ngIf="showEmailValidationError()">Please enter a valid email address.</div>
       </div>
     </div>
     <div class="f mb">
@@ -239,9 +247,39 @@
       </div>
     </div>
     <div class="g3 mb" *ngIf="['NRI','PIO','OCI'].includes(form.residentialStatus)">
-      <div class="f"><label>Country</label><input type="text" [value]="form.nriCountry"           (input)="patch('nriCountry',$any($event.target).value)"/></div>
-      <div class="f"><label>Local Contact No.</label><input type="tel" [value]="form.localContactNo" (input)="patch('localContactNo',$any($event.target).value)"/></div>
-      <div class="f"><label>Local Contact Person</label><input type="text" [value]="form.localContactPerson" (input)="patch('localContactPerson',$any($event.target).value)"/></div>
+      <div class="f">
+        <label>Country</label>
+        <input
+          id="nri-country"
+          type="text"
+          [value]="form.nriCountry"
+          [class.error]="isNriFieldInvalid('nriCountry')"
+          (input)="onNriInput('nriCountry',$any($event.target).value)"
+          (blur)="onNriBlur('nriCountry')"/>
+        <div class="field-error" *ngIf="isNriFieldInvalid('nriCountry')">Country is required.</div>
+      </div>
+      <div class="f">
+        <label>Local Contact No.</label>
+        <input
+          id="nri-localContactNo"
+          type="tel"
+          [value]="form.localContactNo"
+          [class.error]="isNriFieldInvalid('localContactNo')"
+          (input)="onNriInput('localContactNo',$any($event.target).value)"
+          (blur)="onNriBlur('localContactNo')"/>
+        <div class="field-error" *ngIf="isNriFieldInvalid('localContactNo')">Local contact number is required.</div>
+      </div>
+      <div class="f">
+        <label>Local Contact Person</label>
+        <input
+          id="nri-localContactPerson"
+          type="text"
+          [value]="form.localContactPerson"
+          [class.error]="isNriFieldInvalid('localContactPerson')"
+          (input)="onNriInput('localContactPerson',$any($event.target).value)"
+          (blur)="onNriBlur('localContactPerson')"/>
+        <div class="field-error" *ngIf="isNriFieldInvalid('localContactPerson')">Local contact person is required.</div>
+      </div>
     </div>
   </div>
 
@@ -255,9 +293,39 @@
       </div>
     </div>
     <div class="g3" *ngIf="form.funding.loanOpted==='Yes'">
-      <div class="f"><label>Bank / FI Name</label><input type="text" [value]="form.funding.bankName"   (input)="patchFunding('bankName',$any($event.target).value)"/></div>
-      <div class="f"><label>Own Contribution %</label><input type="text" [value]="form.funding.ownContrib" (input)="patchFunding('ownContrib',$any($event.target).value)"/></div>
-      <div class="f"><label>Home Loan %</label><input type="text" [value]="form.funding.homeLoan"      (input)="patchFunding('homeLoan',$any($event.target).value)"/></div>
+      <div class="f">
+        <label>Bank / FI Name</label>
+        <input
+          id="funding-bankName"
+          type="text"
+          [value]="form.funding.bankName"
+          [class.error]="isFundingFieldInvalid('bankName')"
+          (input)="onFundingInput('bankName',$any($event.target).value)"
+          (blur)="onFundingBlur('bankName')"/>
+        <div class="field-error" *ngIf="isFundingFieldInvalid('bankName')">Bank / FI Name is required.</div>
+      </div>
+      <div class="f">
+        <label>Own Contribution %</label>
+        <input
+          id="funding-ownContrib"
+          type="text"
+          [value]="form.funding.ownContrib"
+          [class.error]="isFundingFieldInvalid('ownContrib')"
+          (input)="onFundingInput('ownContrib',$any($event.target).value)"
+          (blur)="onFundingBlur('ownContrib')"/>
+        <div class="field-error" *ngIf="isFundingFieldInvalid('ownContrib')">Own Contribution % is required.</div>
+      </div>
+      <div class="f">
+        <label>Home Loan %</label>
+        <input
+          id="funding-homeLoan"
+          type="text"
+          [value]="form.funding.homeLoan"
+          [class.error]="isFundingFieldInvalid('homeLoan')"
+          (input)="onFundingInput('homeLoan',$any($event.target).value)"
+          (blur)="onFundingBlur('homeLoan')"/>
+        <div class="field-error" *ngIf="isFundingFieldInvalid('homeLoan')">Home Loan % is required.</div>
+      </div>
     </div>
   </div>
 
@@ -325,14 +393,17 @@
         </app-signature-pad>
       </div>
     </div>
-    <div style="margin-top:24px; max-width:280px" *ngIf="form.channelPartner.applicable">
-      <p class="sub-note" style="margin-bottom:10px">Channel Partner / Witness Signature</p>
+    <div style="margin-top:24px; max-width:280px" *ngIf="form.channelPartner.applicable" id="cp-signature-section">
+      <p class="sub-note" style="margin-bottom:10px">Channel Partner / Witness Signature <span class="req">*</span></p>
       <app-signature-pad
         label="Channel Partner / Witness"
-        [mandatory]="false"
+        [mandatory]="true"
         (signed)="onSigned('channelPartner',$event)"
         (cleared)="onSignatureCleared('channelPartner')">
       </app-signature-pad>
+      <div class="field-error" *ngIf="showErrors && form.channelPartner.applicable && !form.signatures?.['channelPartner']">
+        Channel Partner Signature is required.
+      </div>
     </div>
   </div>
 

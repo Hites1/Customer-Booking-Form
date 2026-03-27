@@ -18,7 +18,7 @@ const EMPTY_SECTION1 = (): Section1 => ({
   profession: '', organization: '', designation: '',
   officeAddress: '', businessCard: false,
   mobile: '', residencePhone: '', officePhone: '', email: '',
-  residentialStatus: '', nriCountry: '', localContactNo: '', localContactPerson: '',
+  residentialStatus: 'Resident Indian', nriCountry: '', localContactNo: '', localContactPerson: '',
   flat: {
     projectName: '', wing: '', flatNo: '', floor: '', configuration: '', bhkType: '',
     reraCarpet: '', alongWithArea: '', cpNo: '', cpLevel: '', cpType: '',
@@ -37,7 +37,7 @@ const EMPTY_SECTION1 = (): Section1 => ({
 });
 
 const EMPTY_SECTION3 = (): Section3 => ({
-  householdCount: '',
+  householdCount: '1',
   family: [
     { relation: 'Self',     name: '', age: '', livingTogether: '', maritalStatus: '', occupation: '', placeOfOccupation: '' },
     { relation: 'Spouse',   name: '', age: '', livingTogether: '', maritalStatus: '', occupation: '', placeOfOccupation: '' },
@@ -115,16 +115,29 @@ export class BookingFormService {
     if (index <= 0) return; // never remove applicant 1
     if (index >= applicants.length) return;
 
-    // Only safe if removing the last added applicant, otherwise indices shift.
     applicants.splice(index, 1);
 
-    const applicantNum = index + 1;
-    const photos = { ...(this.section1.photos || {}) };
-    const signatures = { ...(this.section1.signatures || {}) };
-    delete photos[`applicant${applicantNum}`];
-    delete signatures[`applicant${applicantNum}`];
+    const photos = this.reindexApplicantMediaMap(this.section1.photos || {}, index);
+    const signatures = this.reindexApplicantMediaMap(this.section1.signatures || {}, index);
+
+    const section4Applicants = [...(this.section4.applicants || [])];
+    if (index < section4Applicants.length) {
+      section4Applicants.splice(index, 1);
+    }
+    const safeCount = Math.max(1, applicants.length);
+    while (section4Applicants.length < safeCount) section4Applicants.push({});
+    if (section4Applicants.length > safeCount) section4Applicants.length = safeCount;
+
+    if (this._existingFiles?.applicants) {
+      const shifted = [...this._existingFiles.applicants];
+      if (index < shifted.length) shifted.splice(index, 1);
+      while (shifted.length < safeCount) shifted.push({});
+      if (shifted.length > safeCount) shifted.length = safeCount;
+      this._existingFiles = { ...this._existingFiles, applicants: shifted as any };
+    }
 
     this.updateSection1({ applicants, photos, signatures });
+    this.updateSection4({ applicants: section4Applicants as ApplicantKyc[] });
   }
 
   updateKycDocument(appIdx: number, field: string, docData: any) {
@@ -203,6 +216,7 @@ export class BookingFormService {
       } else {
         s1.applicants = apps;
       }
+      if (!s1.residentialStatus) s1.residentialStatus = 'Resident Indian';
       s1.signatures = {};
       s1.photos     = {};
       this._s1.next(s1);
@@ -216,6 +230,7 @@ export class BookingFormService {
           maritalStatus: '', occupation: '', placeOfOccupation: ''
         });
       }
+      if (!s3.householdCount) s3.householdCount = '1';
       this._s3.next(s3);
     }
 
@@ -252,5 +267,28 @@ export class BookingFormService {
 
     while (current.length < safeCount) current.push({});
     this.updateSection4({ applicants: current as ApplicantKyc[] });
+  }
+
+  private reindexApplicantMediaMap(
+    mediaMap: { [key: string]: string },
+    removedIndex: number
+  ): { [key: string]: string } {
+    const out: { [key: string]: string } = {};
+    Object.entries(mediaMap || {}).forEach(([key, value]) => {
+      const match = /^applicant(\d+)$/.exec(key);
+      if (!match) {
+        out[key] = value;
+        return;
+      }
+      const oneBased = Number(match[1]);
+      const zeroBased = oneBased - 1;
+      if (zeroBased === removedIndex) return;
+      if (zeroBased > removedIndex) {
+        out[`applicant${oneBased - 1}`] = value;
+        return;
+      }
+      out[key] = value;
+    });
+    return out;
   }
 }

@@ -19,9 +19,78 @@ export class Section3Component implements OnInit {
   socialOptions   = ['Facebook','Twitter / X','Instagram','Snapchat'];
   travelOptions   = ['Once a Year','Frequently','Rarely'];
 
+  showErrors = false;
+
   constructor(public svc: BookingFormService) {}
 
-  ngOnInit() { this.svc.section3$.subscribe(s => this.form = s); }
+  ngOnInit() {
+    this.svc.section3$.subscribe(s => {
+      this.form = s;
+      if (!this.form.householdCount) {
+        this.patch('householdCount', '1');
+      }
+    });
+  }
+
+  trackByIndex(index: number): number { return index; }
+
+  /** Returns the Self FamilyMember (index 0 by convention, or by relation). */
+  private getSelf() {
+    return this.form?.family?.find(m => m.relation === 'Self');
+  }
+
+  /**
+   * Per-field invalid check for the Self row.
+   * Used in the template for red-border highlighting.
+   */
+  isSelfFieldInvalid(field: 'name' | 'age' | 'livingTogether' | 'maritalStatus' | 'occupation' | 'placeOfOccupation'): boolean {
+    if (!this.showErrors) return false;
+    const self = this.getSelf();
+    if (!self) return true;
+    return !(self[field] || '').trim();
+  }
+
+  /** True only when ALL Self fields are filled. */
+  isSelfValid(): boolean {
+    const self = this.getSelf();
+    if (!self) return false;
+    return !!(
+      self.name?.trim() &&
+      self.age?.trim() &&
+      self.livingTogether?.trim() &&
+      self.maritalStatus?.trim() &&
+      self.occupation?.trim() &&
+      self.placeOfOccupation?.trim()
+    );
+  }
+
+  /** Legacy alias kept so existing template binding still compiles. */
+  isSelfSelected(): boolean { return this.isSelfValid(); }
+
+  getValidationState(): { valid: boolean; errorMessage: string } {
+    this.showErrors = true;
+    if (this.isSelfValid()) {
+      return { valid: true, errorMessage: '' };
+    }
+
+    return {
+      valid: false,
+      errorMessage: 'Please complete all Self details in Family Members.'
+    };
+  }
+
+  /** Returns a list of missing Self field labels for the validation modal. */
+  getMissingSelfFields(): string[] {
+    const self = this.getSelf();
+    const missing: string[] = [];
+    if (!self?.name?.trim())               missing.push('Self – Name');
+    if (!self?.age?.trim())                missing.push('Self – Age');
+    if (!self?.livingTogether?.trim())     missing.push('Self – Living Together');
+    if (!self?.maritalStatus?.trim())      missing.push('Self – Marital Status');
+    if (!self?.occupation?.trim())         missing.push('Self – Occupation');
+    if (!self?.placeOfOccupation?.trim())  missing.push('Self – Place of Work / School');
+    return missing;
+  }
 
   patch(field: string, value: any) { this.svc.updateSection3({ [field]: value } as any); }
 
