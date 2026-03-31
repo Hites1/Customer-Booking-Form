@@ -34,15 +34,13 @@ export class Section3Component implements OnInit {
 
   trackByIndex(index: number): number { return index; }
 
-  /** Returns the Self FamilyMember (index 0 by convention, or by relation). */
+  // ── Self row helpers ──────────────────────────────────────────────
+
   private getSelf() {
     return this.form?.family?.find(m => m.relation === 'Self');
   }
 
-  /**
-   * Per-field invalid check for the Self row.
-   * Used in the template for red-border highlighting.
-   */
+  /** Per-field red-border check — used in template */
   isSelfFieldInvalid(field: 'name' | 'age' | 'livingTogether' | 'maritalStatus' | 'occupation' | 'placeOfOccupation'): boolean {
     if (!this.showErrors) return false;
     const self = this.getSelf();
@@ -50,7 +48,7 @@ export class Section3Component implements OnInit {
     return !(self[field] || '').trim();
   }
 
-  /** True only when ALL Self fields are filled. */
+  /** True only when ALL 6 Self fields are filled */
   isSelfValid(): boolean {
     const self = this.getSelf();
     if (!self) return false;
@@ -64,22 +62,19 @@ export class Section3Component implements OnInit {
     );
   }
 
-  /** Legacy alias kept so existing template binding still compiles. */
+  /** Legacy alias so existing template bindings keep working */
   isSelfSelected(): boolean { return this.isSelfValid(); }
 
+  /** Called by AppComponent before navigating away from Step 2 */
   getValidationState(): { valid: boolean; errorMessage: string } {
     this.showErrors = true;
     if (this.isSelfValid()) {
       return { valid: true, errorMessage: '' };
     }
-
-    return {
-      valid: false,
-      errorMessage: 'Please complete all Self details in Family Members.'
-    };
+    return { valid: false, errorMessage: 'Please complete all Self details in Family Members.' };
   }
 
-  /** Returns a list of missing Self field labels for the validation modal. */
+  /** Returns each missing Self field as a separate string for the modal bullet list */
   getMissingSelfFields(): string[] {
     const self = this.getSelf();
     const missing: string[] = [];
@@ -91,6 +86,8 @@ export class Section3Component implements OnInit {
     if (!self?.placeOfOccupation?.trim())  missing.push('Self – Place of Work / School');
     return missing;
   }
+
+  // ── Patch helpers ─────────────────────────────────────────────────
 
   patch(field: string, value: any) { this.svc.updateSection3({ [field]: value } as any); }
 

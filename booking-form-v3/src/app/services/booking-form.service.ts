@@ -237,7 +237,12 @@ export class BookingFormService {
     // KYC file base64 data cannot be round-tripped — existingFiles carries
     // the File Cabinet IDs instead, shown as "Previously uploaded" in Section4
     this._s4.next({ applicants: [{}] as any });
-    this.syncSection4ApplicantCount((this.section1.applicants || []).length || 1);
+
+    // Show only applicants that have actual data (firstName filled).
+    // Raw array may include empty placeholder objects from NetSuite — filter those out.
+    const filledCount = (this.section1.applicants || [])
+      .filter((a: any) => a?.firstName?.trim()).length;
+    this.syncSection4ApplicantCount(Math.max(1, filledCount));
 
     this._step.next(1);
     sessionStorage.clear();

@@ -21,6 +21,8 @@ export class AppComponent implements OnInit {
   draftSaved   = false;
   showValidationModal = false;
   validationMissingFields: string[] = [];
+  modalCountdown = 3;
+  private modalTimer: any = null;
 
   // @Input() applicantSelectedType = new EventEmitter();
   @Input() applicantType: any;
@@ -127,7 +129,7 @@ scrollToField(fieldId: string) {
     if (!this.formService.isApplicant1PanUploaded()) {
       this.submitting = false;
       this.validationMissingFields = ['Applicant 1 PAN Document (KYC)'];
-      this.showValidationModal = true;
+      this.showModal();
       this.submitError = 'Missing required fields.';
       return;
     }
@@ -149,6 +151,17 @@ scrollToField(fieldId: string) {
 
   closeValidationModal(): void {
     this.showValidationModal = false;
+    if (this.modalTimer) { clearInterval(this.modalTimer); this.modalTimer = null; }
+  }
+
+  private showModal(): void {
+    this.modalCountdown = 3;
+    this.showValidationModal = true;
+    if (this.modalTimer) { clearInterval(this.modalTimer); }
+    this.modalTimer = setInterval(() => {
+      this.modalCountdown--;
+      if (this.modalCountdown <= 0) { this.closeValidationModal(); }
+    }, 1000);
   }
 
   private validateSection1BeforeProceeding(): boolean {
@@ -160,7 +173,7 @@ scrollToField(fieldId: string) {
     }
 
     this.validationMissingFields = validation.missingFieldNames;
-    this.showValidationModal = true;
+    this.showModal();
     this.scrollToField(validation.firstInvalidFieldId);
     return false;
   }
@@ -173,7 +186,7 @@ scrollToField(fieldId: string) {
       return true;
     }
     this.validationMissingFields = this.section3.getMissingSelfFields();
-    this.showValidationModal = true;
+    this.showModal();
     return false;
   }
 }

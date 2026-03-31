@@ -103,6 +103,17 @@
 <!-- Validation modal -->
 <div class="validation-modal-backdrop" *ngIf="showValidationModal" (click)="closeValidationModal()">
   <div class="validation-modal" (click)="$event.stopPropagation()">
+
+    <!-- Countdown ring -->
+    <div class="modal-timer-wrap">
+      <svg class="modal-timer-ring" viewBox="0 0 44 44">
+        <circle cx="22" cy="22" r="18" class="ring-bg"/>
+        <circle cx="22" cy="22" r="18" class="ring-fill"
+          [style.stroke-dashoffset]="(1 - modalCountdown/3) * 113"/>
+      </svg>
+      <span class="modal-timer-num">{{ modalCountdown }}</span>
+    </div>
+
     <h3>Missing Required Fields</h3>
     <p>Please fill in the following required fields before proceeding:</p>
     <ul>
@@ -111,5 +122,6 @@
     <div class="validation-modal-actions">
       <button class="btn-next" type="button" (click)="closeValidationModal()">OK</button>
     </div>
+    <div class="modal-auto-close-note">Closes automatically in {{ modalCountdown }}s</div>
   </div>
 </div>

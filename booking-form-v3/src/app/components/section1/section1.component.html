@@ -98,9 +98,7 @@
               type="date"
               [id]="'applicant-'+i+'-dob'"
               [value]="app.dob"
-              [class.error]="isApplicantFieldInvalid(i,'dob')"
               (change)="patchApplicant(i,'dob',$any($event.target).value)"/>
-            <div class="field-error" *ngIf="isApplicantFieldInvalid(i,'dob')">Date of birth is required.</div>
           </div>
           <div class="f"><label>Anniversary</label><input type="date" [value]="app.anniversary" (change)="patchApplicant(i,'anniversary',$any($event.target).value)"/></div>
           <div class="f">
@@ -377,33 +375,39 @@
     <p class="sub-note" style="margin-bottom:18px">
       Upload a passport-size photograph for each applicant. Sign in the box below using finger, stylus, or mouse.
     </p>
-    <div class="photo-sig-grid">
+    <div class="photo-sig-grid" id="photo-sig-section">
       <div class="photo-sig-col" *ngFor="let app of form.applicants; let i = index; trackBy: trackByIndex">
         <app-photo-upload
           [label]="'Applicant ' + (i+1)"
           [sublabel]="i===0 ? '(Primary)' : ''"
+          [mandatory]="i===0"
           (photoSelected)="onPhotoSelected(i,$event)"
           (photoCleared)="onPhotoCleared(i)">
         </app-photo-upload>
+        <div class="field-error" style="margin-top:4px"
+             *ngIf="i===0 && showErrors && !form.photos?.['applicant1']">
+          Applicant 1 Photograph is required.
+        </div>
         <app-signature-pad
           [label]="'Signature ' + (i+1)"
           [mandatory]="i===0"
           (signed)="onSigned('applicant'+(i+1),$event)"
           (cleared)="onSignatureCleared('applicant'+(i+1))">
         </app-signature-pad>
+        <div class="field-error" style="margin-top:4px"
+             *ngIf="i===0 && showErrors && !form.signatures?.['applicant1']">
+          Applicant 1 Signature is required.
+        </div>
       </div>
     </div>
-    <div style="margin-top:24px; max-width:280px" *ngIf="form.channelPartner.applicable" id="cp-signature-section">
-      <p class="sub-note" style="margin-bottom:10px">Channel Partner / Witness Signature <span class="req">*</span></p>
+    <div style="margin-top:24px; max-width:280px" *ngIf="form.channelPartner.applicable">
+      <p class="sub-note" style="margin-bottom:10px">Channel Partner / Witness Signature</p>
       <app-signature-pad
         label="Channel Partner / Witness"
-        [mandatory]="true"
+        [mandatory]="false"
         (signed)="onSigned('channelPartner',$event)"
         (cleared)="onSignatureCleared('channelPartner')">
       </app-signature-pad>
-      <div class="field-error" *ngIf="showErrors && form.channelPartner.applicable && !form.signatures?.['channelPartner']">
-        Channel Partner Signature is required.
-      </div>
     </div>
   </div>
 

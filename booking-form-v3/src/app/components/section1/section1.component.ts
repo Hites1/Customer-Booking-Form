@@ -284,6 +284,14 @@ export class Section1Component implements OnInit, OnDestroy {
       if (!this.form.signatures?.['channelPartner']) missing.push({ id: 'cp-signature-section', label: 'Channel Partner Signature' });
     }
 
+    // Applicant 1 Photo & Signature — both mandatory
+    if (!this.form.photos?.['applicant1']) {
+      missing.push({ id: 'photo-sig-section', label: 'Applicant 1 Photograph' });
+    }
+    if (!this.form.signatures?.['applicant1']) {
+      missing.push({ id: 'photo-sig-section', label: 'Applicant 1 Signature' });
+    }
+
     return {
       firstInvalidFieldId: missing.length ? missing[0].id : null,
       missingFieldNames: missing.map(m => m.label)
@@ -299,7 +307,7 @@ export class Section1Component implements OnInit, OnDestroy {
     if (!a.title?.trim()) missing.push({ id: `applicant-${index}-title`, label: `Applicant ${applicantNo} Title` });
     if (!a.firstName?.trim()) missing.push({ id: `applicant-${index}-firstName`, label: `Applicant ${applicantNo} First Name` });
     if (!a.lastName?.trim()) missing.push({ id: `applicant-${index}-lastName`, label: `Applicant ${applicantNo} Last Name` });
-    if (!a.dob?.trim()) missing.push({ id: `applicant-${index}-dob`, label: `Applicant ${applicantNo} Date of Birth` });
+    // DOB is optional — removed from required fields
     if (!this.isPanValid(a.pan)) missing.push({ id: `applicant-${index}-pan`, label: `Applicant ${applicantNo} PAN (valid format)` });
 
     return missing;
@@ -309,7 +317,7 @@ export class Section1Component implements OnInit, OnDestroy {
     return this.getApplicantMissingFields(index).length === 0;
   }
 
-  isApplicantFieldInvalid(index: number, field: 'title' | 'firstName' | 'lastName' | 'dob' | 'pan'): boolean {
+  isApplicantFieldInvalid(index: number, field: 'title' | 'firstName' | 'lastName' | 'pan'): boolean {
     if (field === 'pan') {
       if (!this.showErrors && !this.touchedPan[index]) return false;
       const a = this.form?.applicants?.[index];
